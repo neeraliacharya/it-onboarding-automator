@@ -33,3 +33,4 @@ data/*.db-wal
 *.log
 
 checkpoints/
+AI_TRANSCRIPT.md

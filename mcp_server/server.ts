@@ -184,6 +184,52 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
+// ── Argument extraction helper ────────────────────────────────────────────────
+
+/**
+ * Safely extract a named string argument from an MCP tool call's args object.
+ *
+ * The MCP Inspector (form mode) sometimes passes the *entire* arguments JSON
+ * as the string value of a single field when the user types the full JSON body
+ * into one input box — e.g. the user types '{ "email": "a@b.com" }' into the
+ * "email" field, so a.email === '{ "email": "a@b.com" }' instead of 'a@b.com'.
+ *
+ * This helper handles that case by trying to JSON-parse string values that look
+ * like objects and re-extracting the named key.
+ */
+export function extractArg(
+  args: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const raw = args[key];
+
+  // Normal case: the argument is already a plain string.
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    // Inspector passed the full JSON body as this field's value — unwrap it.
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+        const inner = parsed[key];
+        // Key found → return it; key absent → return undefined so callers
+        // emit "Missing required argument" rather than using a garbage string.
+        return typeof inner === 'string' ? inner : undefined;
+      } catch {
+        // Not valid JSON — fall through and use the raw value as-is.
+      }
+    }
+    return trimmed || undefined;
+  }
+
+  // Edge case: the argument is already an object (e.g. `{ email: "a@b.com" }`).
+  if (typeof raw === 'object' && raw !== null) {
+    const inner = (raw as Record<string, unknown>)[key];
+    if (typeof inner === 'string') return inner;
+  }
+
+  return undefined;
+}
+
 // ── tools/call ────────────────────────────────────────────────────────────────
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -195,7 +241,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'get_employee_access': {
-        const email = a.email as string;
+        const email = extractArg(a, 'email');
         if (!email) {
           return {
             content: [{ type: 'text' as const, text: 'Missing required argument: email' }],
@@ -209,7 +255,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'list_failed_events': {
-        const since = a.since as string | undefined;
+        const since = extractArg(a, 'since');
         const result = handleListFailedEvents(since);
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
@@ -217,7 +263,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'retry_provision': {
-        const event_id = a.event_id as string;
+        const event_id = extractArg(a, 'event_id');
         if (!event_id) {
           return {
             content: [{ type: 'text' as const, text: 'Missing required argument: event_id' }],
