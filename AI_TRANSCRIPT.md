@@ -69,3 +69,33 @@
 **Outcome:** Working — two bugs fixed, six new patterns added, all verified clean.
 
 ---
+
+## Webhook handler + provisioner + tests (core)
+
+**Prompt:** Build end-to-end: logger, types, provisioner (with transaction, idempotency, audit log), Express webhook handler, server factory, fixture JSONs, and 4 Jest tests. Run `npm test` and fix failures before declaring done.
+
+**What you generated:** `package.json` (Express 4.22.2, Jest 29.7.0, TS 5.9.3), `tsconfig.json`, `jest.config.ts`. `onboarding/logger.ts` (structured JSON → stderr, LOG_LEVEL-aware). `onboarding/types.ts` (7 interfaces). Updated `onboarding/db.ts` (`:memory:` guard for tests). `onboarding/provisioner.ts` (full 10-step flow, transaction on steps 5–9, INSERT pending outside transaction so catch can flip to failed). `api/webhook.ts` (POST /webhooks/hris, delegates fully to provisioner). `api/server.ts` (createApp factory, listen only when require.main === module). Fixture JSONs. `tests/webhook.test.ts` (4 tests using jest.resetModules + DB_PATH=:memory: isolation). Fixed two TypeScript cast errors (`as Record<string, unknown>` → `as unknown as Record<string, unknown>`) and ts-jest globals deprecation. Checkpoint `20260606-000005-webhook-provisioner-tests.md` written.
+
+**Outcome:** Working — 4/4 tests green on first full run after fixes.
+
+---
+
+## SPEC compliance + .gitignore full audit
+
+**Prompt:** Verify database and webhook handler match SPEC.md exactly; verify .gitignore is complete.
+
+**What you generated:** Ran full systematic audit — schema columns/constraints/defaults, seed data counts, response codes, response shapes, CLAUDE.md rules (no stdout, singleton, no duplicated logic), required implementation markers. All passed. Found one .gitignore issue: `package-lock.json` was being ignored, risking non-reproducible installs for the reviewer — removed it from .gitignore. Checkpoint `20260606-000006-spec-gitignore-audit.md` written.
+
+**Outcome:** Working — everything matches SPEC; one .gitignore bug fixed (package-lock.json now tracked).
+
+---
+
+## README.md + tsconfig declaration fix
+
+**Prompt:** Create README.md as a complete setup guide for a reviewer on a clean machine. Use actual project structure, scripts, and dependencies — do not invent commands. Log what we have done so far.
+
+**What you generated:** Discovered `npm run build` failing with TS4023 (`db` export can't be named in .d.ts — BetterSqlite3.Database uses `export =` module). Fixed by disabling declaration generation in tsconfig.json (`declaration: false`, `declarationMap: false`) — correct for an application project. Verified build exits 0, server starts, curl returns correct JSON. Wrote `README.md` with: prerequisites, 3-step setup (clone/install/env), dev + production run commands, full test output, API reference with curl examples, role/grant table, MCP server status, repo layout, DB inspect commands, design assumptions, and Ollama stretch goal. Checkpoint `20260606-000007-readme-tsconfig-fix.md` written.
+
+**Outcome:** Working — build clean (exit 0), 4/4 tests green, README verified end-to-end.
+
+---

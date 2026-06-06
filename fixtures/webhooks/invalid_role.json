@@ -1,0 +1,7 @@
+{
+  "event_id": "evt_hire_bad_role",
+  "event_type": "employee.hired",
+  "email": "bad.role@example.com",
+  "full_name": "Bad Role",
+  "role": "unknown_role_xyz"
+}

@@ -1,9 +1,5 @@
 # SPEC.md — Mock IT Onboarding Automator
 
-> Written before any application code, as required by the assignment.
-
----
-
 ## Problem Statement
 
 When HR records a new hire, IT needs to grant the right application access based on the employee's role and maintain an audit trail of every provisioning action. Today that is a manual, error-prone process. This project automates it locally:
@@ -461,5 +457,3 @@ After a successful provisioning, the provisioner optionally calls a local Ollama
 | Ollama stretch goal is additive | Make it configurable per deployment via env var |
 
 ---
-
-*End of SPEC.md*

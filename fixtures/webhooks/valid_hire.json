@@ -1,0 +1,7 @@
+{
+  "event_id": "evt_hire_001",
+  "event_type": "employee.hired",
+  "email": "alex.chen@example.com",
+  "full_name": "Alex Chen",
+  "role": "engineer"
+}
