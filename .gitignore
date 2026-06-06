@@ -1,0 +1,36 @@
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Environment ───────────────────────────────────────────────────────────────
+# .env.example is intentionally committed — only the real .env is ignored
+.env
+.env.local
+.env.*.local
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log
+yarn-debug.log*
+package-lock.json
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+*.tsbuildinfo
+
+# ── Test / coverage ───────────────────────────────────────────────────────────
+coverage/
+.jest-cache/
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# init.sql and schema files are committed; only the live DB files are ignored
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+checkpoints/
