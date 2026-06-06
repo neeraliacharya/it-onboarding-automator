@@ -12,7 +12,19 @@
     "resolveJsonModule": true,
     "declaration": false,
     "declarationMap": false,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@modelcontextprotocol/sdk/server": [
+        "./node_modules/@modelcontextprotocol/sdk/dist/esm/server/index"
+      ],
+      "@modelcontextprotocol/sdk/server/stdio.js": [
+        "./node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio"
+      ],
+      "@modelcontextprotocol/sdk/types.js": [
+        "./node_modules/@modelcontextprotocol/sdk/dist/esm/types"
+      ]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist", ".jest-cache"]
