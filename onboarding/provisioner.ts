@@ -17,6 +17,7 @@
 
 import db from './db';
 import { logger } from './logger';
+import { generateOnboardingSummary } from './llm';
 import type { WebhookPayload, ProvisioningResult, WebhookEvent } from './types';
 
 // ── Error class ──────────────────────────────────────────────────────────────
@@ -177,27 +178,39 @@ export function provisionEmployee(payload: WebhookPayload): ProvisioningResult {
 
   // ── Step 3: Idempotency / state check ───────────────────────────────────
   const existing = db
-    .prepare('SELECT status FROM webhook_events WHERE event_id = ?')
-    .get(event_id) as { status: string } | undefined;
+    .prepare('SELECT status, payload_json FROM webhook_events WHERE event_id = ?')
+    .get(event_id) as { status: string; payload_json: string } | undefined;
 
   if (existing) {
     if (existing.status === 'completed') {
       // Return immediately — no writes.
       logger.info('Idempotent skip — event already completed', { event_id });
 
+      // Always use the canonical email from the STORED payload — not the current
+      // request's email.  The same event_id may be replayed with a different email
+      // (or the DB may have drifted), so querying by the request email would return
+      // empty grants even though the original provision succeeded.
+      let canonicalEmail = email; // safe fallback if payload_json is corrupt
+      try {
+        const storedPayload = JSON.parse(existing.payload_json) as WebhookPayload;
+        canonicalEmail = storedPayload.email;
+      } catch {
+        logger.warn('Idempotent: could not parse stored payload_json — falling back to request email', { event_id });
+      }
+
       const grants = db
         .prepare('SELECT app_name FROM access_grants WHERE employee_email = ?')
-        .all(email) as { app_name: string }[];
+        .all(canonicalEmail) as { app_name: string }[];
 
       const emp = db
         .prepare('SELECT role FROM employees WHERE email = ?')
-        .get(email) as { role: string } | undefined;
+        .get(canonicalEmail) as { role: string } | undefined;
 
       return {
         event_id,
         status: 'completed',
         idempotent: true,
-        employee: { email, role: emp?.role ?? role },
+        employee: { email: canonicalEmail, role: emp?.role ?? role },
         granted_apps: grants.map((g) => g.app_name),
       };
     }
@@ -255,6 +268,15 @@ export function provisionEmployee(payload: WebhookPayload): ProvisioningResult {
     event_id,
     granted_apps_count: grantedApps.length,
   });
+
+  // ── Stretch goal: Ollama onboarding summary (fire-and-forget) ────────────
+  // Called after the response is ready to return — never blocks, never throws.
+  // If Ollama is not running, generateOnboardingSummary() returns null silently.
+  generateOnboardingSummary({ email, full_name, role }, grantedApps)
+    .then((summary) => {
+      if (summary) logger.info('Ollama onboarding summary', { event_id, summary });
+    })
+    .catch(() => null);
 
   return {
     event_id,
@@ -353,6 +375,13 @@ export function retryProvisionEmployee(eventId: string): ProvisioningResult {
     event_id,
     granted_apps_count: grantedApps.length,
   });
+
+  // Stretch goal: Ollama summary — fire-and-forget, same rules as provisionEmployee.
+  generateOnboardingSummary({ email, full_name, role }, grantedApps)
+    .then((summary) => {
+      if (summary) logger.info('Ollama onboarding summary', { event_id, summary });
+    })
+    .catch(() => null);
 
   return {
     event_id,

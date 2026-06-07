@@ -201,6 +201,37 @@ describe('POST /webhooks/hris', () => {
       });
     });
 
+    test('idempotent replay with a different email still returns the original grants (not empty)', async () => {
+      // Provision for alice@example.com
+      const original = {
+        event_id:   'evt_canonical_test',
+        event_type: 'employee.hired',
+        email:      'alice.canonical@example.com',
+        full_name:  'Alice Canonical',
+        role:       'engineer',
+      };
+      const first = await supertest(app).post('/webhooks/hris').send(original);
+      expect(first.status).toBe(202);
+      expect(first.body.idempotent).toBe(false);
+
+      // Replay the SAME event_id but with a completely different email in the body
+      const replay = await supertest(app).post('/webhooks/hris').send({
+        ...original,
+        email:     'different.email@example.com',
+        full_name: 'Different Person',
+      });
+
+      expect(replay.status).toBe(202);
+      expect(replay.body.idempotent).toBe(true);
+      // Grants must come from the ORIGINAL provision — not an empty array
+      expect(replay.body.granted_apps).toHaveLength(3);
+      expect(replay.body.granted_apps).toEqual(
+        expect.arrayContaining(['slack', 'google_workspace', 'jira']),
+      );
+      // Response email must be the canonical stored email, not the replayed email
+      expect(replay.body.employee.email).toBe('alice.canonical@example.com');
+    });
+
     test('multiple replays of the same event_id all return 202 idempotent:true', async () => {
       await supertest(app).post('/webhooks/hris').send(VALID_HIRE);
 

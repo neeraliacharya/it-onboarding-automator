@@ -124,6 +124,7 @@ npm start
 | `DB_PATH` | `data/onboarding.db` | Path to the SQLite database file. Set to `:memory:` to use an in-memory DB (used by tests). |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL (stretch goal only) |
 | `OLLAMA_MODEL` | `llama3` | Ollama model name (stretch goal only). e.g. `mistral` |
+| `OLLAMA_TIMEOUT_MS` | `60000` | Max milliseconds to wait for an Ollama response (stretch goal only). llama3 first-load can take 30–60 s. |
 
 ---
 
@@ -143,6 +144,37 @@ npm run test:coverage  # generate coverage report in coverage/
 Expected output:
 
 ```
+PASS tests/ollama.test.ts
+  generateOnboardingSummary (Ollama integration)
+    happy path
+      ✓ returns the trimmed summary string from Ollama
+      ✓ calls the correct Ollama REST endpoint
+      ✓ sends model=llama3 and stream=false in the request body
+    HTTP error responses → null
+      ✓ 404 (model not pulled) → null
+      ✓ 500 (Ollama internal error) → null
+      ✓ 503 (service unavailable) → null
+    network / connection errors → null
+      ✓ ECONNREFUSED (Ollama not running) → null
+      ✓ AbortError (request timeout) → null
+      ✓ generic network failure → null
+    bad response bodies → null
+      ✓ response.response is empty string → null
+      ✓ response.response is whitespace-only → null
+      ✓ response.response key is absent → null
+      ✓ response.json() rejects (malformed JSON) → null
+    environment variable overrides
+      ✓ OLLAMA_BASE_URL is reflected in the fetch URL
+      ✓ trailing slash in OLLAMA_BASE_URL is stripped before appending path
+      ✓ OLLAMA_MODEL is sent in the request body
+      ✓ missing env vars fall back to defaults (llama3, localhost:11434)
+    contract: never throws — all failure modes resolve to null
+      ✓ does not throw when fetch rejects
+      ✓ does not throw on HTTP 500 non-OK response
+      ✓ does not throw when response.json() rejects
+    prompt content
+      ✓ prompt includes employee full_name, email, role, and all granted app names
+
 PASS tests/webhook.test.ts
   POST /webhooks/hris
     valid hire
@@ -192,7 +224,7 @@ PASS tests/mcp.test.ts
       ✓ retry → completed → retry again throws "not in failed state"
       ✓ webhook_events row preserves original created_at after retry
 
-Tests: 39 passed, 39 total
+Tests: 60 passed, 60 total
 ```
 
 ---
@@ -360,7 +392,8 @@ The Inspector opens a local web UI where you can list and call all three tools i
 │   ├── provisioner.ts         # Core: validate → resolve → grant → audit + retry
 │   ├── db.ts                  # SQLite connection singleton (all DB access goes here)
 │   ├── types.ts               # Shared TypeScript interfaces
-│   └── logger.ts              # Structured JSON logger — stderr only
+│   ├── logger.ts              # Structured JSON logger — stderr only
+│   └── llm.ts                 # (stretch goal) Ollama summary — fire-and-forget, never blocks
 │
 ├── api/
 │   ├── server.ts              # Express app factory + entry point
@@ -379,7 +412,8 @@ The Inspector opens a local web UI where you can list and call all three tools i
 │
 └── tests/
     ├── webhook.test.ts        # POST /webhooks/hris — 15 tests (happy path, idempotency, validation, errors)
-    └── mcp.test.ts            # MCP tool handlers — 24 tests (extractArg, all 3 tools, state machine)
+    ├── mcp.test.ts            # MCP tool handlers — 24 tests (extractArg, all 3 tools, state machine)
+    └── ollama.test.ts         # Ollama integration — 21 tests (fetch mocked; no Ollama required)
 ```
 
 ---
@@ -419,16 +453,92 @@ sqlite> SELECT event_id, status, error_message FROM webhook_events;
 
 ## Stretch Goal — Ollama LLM Summary
 
-After a successful provisioning, the provisioner can optionally call a local Ollama model to generate a plain-English onboarding summary, logged to stderr. If Ollama is not running the system skips silently — the core flow is never blocked.
+After a successful provisioning, the provisioner optionally calls a local Ollama model to generate a plain-English onboarding summary. The summary is logged to **stderr only** — it never appears in the HTTP response, never blocks the webhook response, and never causes the core flow to fail.
 
-```bash
-# Pull and start Ollama
-ollama pull llama3
-ollama serve
+### How it works
+
+```
+POST /webhooks/hris
+        │
+        ▼
+  provisionEmployee()        ← synchronous, returns immediately
+        │
+        ├──▶ 202 returned to caller (instant)
+        │
+        └──▶ generateOnboardingSummary()  ← fire-and-forget Promise
+                      │
+                      ├── Ollama running → summary logged to stderr
+                      └── Ollama not running → null returned, nothing logged (silent)
 ```
 
-Set `OLLAMA_MODEL` in `.env` to switch models (e.g. `mistral`).
-Set `OLLAMA_BASE_URL` to point at a remote Ollama instance.
+The integration is **purely additive** — no function signatures change, no tests require Ollama, and removing `onboarding/llm.ts` would only require removing two `import` references.
+
+### Setup
+
+```bash
+# 1. Install Ollama (https://ollama.com)
+# 2. Pull the model — llama3 is ~4 GB on first pull
+ollama pull llama3
+
+# 3. Start the Ollama server (runs on port 11434)
+ollama serve
+
+# 4. Verify it's running
+ollama list
+# Should show: llama3   ...   4.7 GB
+```
+
+### Configuration
+
+All Ollama settings are in `.env` (no code changes needed):
+
+| Variable | Default | Notes |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Change to point at a remote Ollama instance. Trailing slash is stripped automatically. |
+| `OLLAMA_MODEL` | `llama3` | Any model you have pulled locally. e.g. `mistral`, `phi3`, `gemma2` |
+| `OLLAMA_TIMEOUT_MS` | `60000` | 60 seconds. llama3 first-load (cold start) can take 30–60 s. Increase if you see timeouts. |
+
+### What to expect in logs
+
+With `LOG_LEVEL=debug` in `.env` (already set by default), you'll see the full call trace:
+
+**Ollama running, model loaded:**
+```json
+{"level":"info","msg":"provisioned","event_id":"evt_hire_001","granted_apps_count":3}
+{"level":"debug","msg":"Ollama: attempting onboarding summary","model":"llama3","baseUrl":"http://localhost:11434","timeoutMs":60000}
+{"level":"debug","msg":"Ollama: summary generated successfully","model":"llama3","chars":187}
+{"level":"info","msg":"Ollama onboarding summary","event_id":"evt_hire_001","summary":"Welcome Alex Chen! ..."}
+```
+
+**Ollama not running (ECONNREFUSED):**
+```json
+{"level":"info","msg":"provisioned","event_id":"evt_hire_001","granted_apps_count":3}
+{"level":"debug","msg":"Ollama: attempting onboarding summary","model":"llama3"}
+{"level":"debug","msg":"Ollama: call failed silently","error":"...ECONNREFUSED...","hint":"Ollama is not running. Start it with: ollama serve"}
+```
+
+**Model not pulled (404):**
+```json
+{"level":"debug","msg":"Ollama: non-OK response — skipping summary","status":404,"hint":"Model \"llama3\" may not be pulled. Run: ollama pull llama3"}
+```
+
+**Request timed out:**
+```json
+{"level":"debug","msg":"Ollama: request timed out","model":"llama3","timeoutMs":60000}
+```
+
+### Switching models
+
+```bash
+# Use Mistral instead of llama3
+ollama pull mistral
+# Then update .env:
+OLLAMA_MODEL=mistral
+```
+
+### Tests — no Ollama required
+
+All 60 tests pass without Ollama running. The Ollama test suite (`tests/ollama.test.ts`) mocks `global.fetch` directly and covers every failure mode (ECONNREFUSED, HTTP 4xx/5xx, timeout, bad response body, missing env vars) without touching a live Ollama instance.
 
 The integration lives in `onboarding/llm.ts` (stretch goal module, additive only).
 

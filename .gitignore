@@ -32,5 +32,5 @@ data/*.db-wal
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 
+# ── Screenshots (local testing artefacts — not committed) ────────────────────
 checkpoints/
-AI_TRANSCRIPT.md
