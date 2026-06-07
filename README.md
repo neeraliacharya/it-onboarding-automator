@@ -14,14 +14,14 @@ A mock IT onboarding service that automatically provisions SaaS application acce
 
 ## Tech Stack
 
-| Concern | Choice |
-|---|---|
-| Language | TypeScript (Node.js 20+) |
-| HTTP framework | Express 4 |
-| Database | SQLite via `better-sqlite3` |
-| MCP SDK | `@modelcontextprotocol/sdk` |
-| Test runner | Jest + `ts-jest` |
-| Schema | Plain SQL init script (`data/init.sql`) |
+| Concern        | Choice                                  |
+| -------------- | --------------------------------------- |
+| Language       | TypeScript (Node.js 20+)                |
+| HTTP framework | Express 4                               |
+| Database       | SQLite via `better-sqlite3`             |
+| MCP SDK        | `@modelcontextprotocol/sdk`             |
+| Test runner    | Jest + `ts-jest`                        |
+| Schema         | Plain SQL init script (`data/init.sql`) |
 
 ---
 
@@ -32,6 +32,7 @@ A mock IT onboarding service that automatically provisions SaaS application acce
 - **npx** — bundled with npm 10, used for the MCP Inspector smoke-test
 - **Ollama** — optional; only needed for the stretch-goal LLM summary feature
 
+
 No other global installs are required.
 
 ---
@@ -40,26 +41,26 @@ No other global installs are required.
 
 ### 1. Clone and enter the repo
 
-```bash
+```
 git clone <repo-url>
 cd it-onboarding-automator
 ```
 
 ### 2. Install dependencies
 
-```bash
+```
 npm install
 ```
 
 ### 3. Configure environment
 
-```bash
+```
 cp .env.example .env
 ```
 
 The defaults in `.env` work out of the box:
 
-```env
+```
 PORT=3000
 NODE_ENV=development
 LOG_LEVEL=info
@@ -70,7 +71,7 @@ OLLAMA_MODEL=llama3                      # stretch goal only
 
 ### 4. Initialise the database
 
-```bash
+```
 npm run db:init
 ```
 
@@ -78,13 +79,14 @@ This creates `data/onboarding.db`, runs the DDL from `data/init.sql`, and seeds 
 
 ```
 [db] Schema initialised from data/init.sql (.../data/onboarding.db)
+
 ```
 
 If you run it again on an existing DB it exits silently (idempotent).
 
 ### 5. Start the development server
 
-```bash
+```
 npm run dev
 ```
 
@@ -93,6 +95,7 @@ Expected output (all on **stderr**, port **3000**):
 ```
 [db] Connected to existing database at .../data/onboarding.db
 {"level":"info","ts":"2024-01-01T10:00:00.000Z","msg":"Server started","port":3000,"log_level":"info"}
+
 ```
 
 ---
@@ -101,13 +104,13 @@ Expected output (all on **stderr**, port **3000**):
 
 ### Development (TypeScript, compiled on the fly)
 
-```bash
+```
 npm run dev
 ```
 
 ### Production (compile first)
 
-```bash
+```
 npm run build
 npm start
 ```
@@ -116,27 +119,27 @@ npm start
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `3000` | TCP port the Express server listens on |
-| `NODE_ENV` | `development` | Runtime environment |
-| `LOG_LEVEL` | `info` | Minimum log level written to stderr. Valid values: `debug` \| `info` \| `warn` \| `error` |
-| `DB_PATH` | `data/onboarding.db` | Path to the SQLite database file. Set to `:memory:` to use an in-memory DB (used by tests). |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL (stretch goal only) |
-| `OLLAMA_MODEL` | `llama3` | Ollama model name (stretch goal only). e.g. `mistral` |
-| `OLLAMA_TIMEOUT_MS` | `60000` | Max milliseconds to wait for an Ollama response (stretch goal only). llama3 first-load can take 30–60 s. |
+| Variable            | Default                  | Description                                                                                              |
+| ------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `PORT`              | `3000`                   | TCP port the Express server listens on                                                                   |
+| `NODE_ENV`          | `development`            | Runtime environment                                                                                      |
+| `LOG_LEVEL`         | `info`                   | Minimum log level written to stderr. Valid values: `debug` \| `info` \| `warn` \| `error`                |
+| `DB_PATH`           | `data/onboarding.db`     | Path to the SQLite database file. Set to `:memory:` to use an in-memory DB (used by tests).              |
+| `OLLAMA_BASE_URL`   | `http://localhost:11434` | Ollama API base URL (stretch goal only)                                                                  |
+| `OLLAMA_MODEL`      | `llama3`                 | Ollama model name (stretch goal only). e.g. `mistral`                                                    |
+| `OLLAMA_TIMEOUT_MS` | `60000`                  | Max milliseconds to wait for an Ollama response (stretch goal only). llama3 first-load can take 30–60 s. |
 
 ---
 
 ## Testing
 
-```bash
+```
 npm test
 ```
 
 All tests use an **isolated in-memory SQLite database** — they never touch `data/onboarding.db`. Each test gets a completely fresh database via `jest.resetModules()` + `DB_PATH=:memory:` in `beforeEach`.
 
-```bash
+```
 npm run test:watch     # re-run on file changes
 npm run test:coverage  # generate coverage report in coverage/
 ```
@@ -225,6 +228,7 @@ PASS tests/mcp.test.ts
       ✓ webhook_events row preserves original created_at after retry
 
 Tests: 60 passed, 60 total
+
 ```
 
 ---
@@ -236,28 +240,32 @@ Tests: 60 passed, 60 total
 Accepts a new-hire event from the HR system.
 
 **Validation rules:**
+
 - All five fields required: `event_id`, `event_type`, `email`, `full_name`, `role`
 - `event_type` must be exactly `"employee.hired"`
 - `role` must exist in the seeded `role_app_grants` table
 
+
 **Seeded roles and their app grants:**
 
-| Role | Apps granted |
-|---|---|
-| `engineer` | slack, google_workspace, jira |
-| `sales` | slack, google_workspace, salesforce |
-| `it_admin` | slack, google_workspace, jira, salesforce |
+| Role       | Apps granted                               |
+| ---------- | ------------------------------------------ |
+| `engineer` | slack, google\_workspace, jira             |
+| `sales`    | slack, google\_workspace, salesforce       |
+| `it_admin` | slack, google\_workspace, jira, salesforce |
+
 
 **Response codes:**
 
-| Code | Condition |
-|---|---|
-| `202 Accepted` | New event processed successfully |
-| `202 Accepted` | Duplicate `event_id` — already completed (`"idempotent": true`) |
+| Code              | Condition                                                                     |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `202 Accepted`    | New event processed successfully                                              |
+| `202 Accepted`    | Duplicate `event_id` — already completed (`"idempotent": true`)               |
 | `400 Bad Request` | Missing field / wrong `event_type` / unknown role / re-POST of a failed event |
-| `409 Conflict` | Event currently `pending` (in-flight processing) |
+| `409 Conflict`    | Event currently `pending` (in-flight processing)                              |
 
 ---
+
 
 ### Example curl requests
 
@@ -265,7 +273,7 @@ Run these after `npm run dev` in a separate terminal.
 
 #### 1. Valid hire → 202
 
-```bash
+```
 curl -s -X POST http://localhost:3000/webhooks/hris \
   -H "Content-Type: application/json" \
   -d @fixtures/webhooks/valid_hire.json | jq .
@@ -273,7 +281,7 @@ curl -s -X POST http://localhost:3000/webhooks/hris \
 
 Expected response:
 
-```json
+```
 {
   "event_id": "evt_hire_001",
   "status": "completed",
@@ -292,7 +300,7 @@ Expected response:
 
 #### 2. Duplicate replay → 202 idempotent:true
 
-```bash
+```
 curl -s -X POST http://localhost:3000/webhooks/hris \
   -H "Content-Type: application/json" \
   -d @fixtures/webhooks/duplicate.json | jq .
@@ -300,7 +308,7 @@ curl -s -X POST http://localhost:3000/webhooks/hris \
 
 Expected response (same `event_id` as above — idempotent replay, no writes):
 
-```json
+```
 {
   "event_id": "evt_hire_001",
   "status": "completed",
@@ -319,7 +327,7 @@ Expected response (same `event_id` as above — idempotent replay, no writes):
 
 #### 3. Invalid role → 400
 
-```bash
+```
 curl -s -X POST http://localhost:3000/webhooks/hris \
   -H "Content-Type: application/json" \
   -d @fixtures/webhooks/invalid_role.json | jq .
@@ -327,7 +335,7 @@ curl -s -X POST http://localhost:3000/webhooks/hris \
 
 Expected response:
 
-```json
+```
 {
   "event_id": "evt_hire_bad_role",
   "error": "unknown_role",
@@ -345,14 +353,14 @@ The MCP server runs as a **stdio process** — it does not bind to a network por
 
 Build first, then register:
 
-```bash
+```
 npm run build
 claude mcp add onboarding-automator node dist/mcp_server/server.js
 ```
 
 ### Smoke-test with MCP Inspector
 
-```bash
+```
 npx @modelcontextprotocol/inspector node dist/mcp_server/server.js
 ```
 
@@ -360,13 +368,16 @@ The Inspector opens a local web UI where you can list and call all three tools i
 
 ### Available tools
 
-| Tool | Input | Description |
-|---|---|---|
-| `get_employee_access` | `{ email: string }` | Email → role, full name, and list of active grants |
-| `list_failed_events` | `{ since?: string }` | All failed webhook events. Optional ISO-8601 `since` filter on `updated_at` |
-| `retry_provision` | `{ event_id: string }` | Re-run provisioning for a failed event using the original payload |
+| Tool                  | Input (programmatic)   | Input for MCP Inspector                                                                                     | Description                                                                 |
+| --------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `get_employee_access` | `{ email: string }`    | `email` — enter the employee's email address (e.g. `alex.chen@example.com`)                                 | Email → role, full name, and list of active grants                          |
+| `list_failed_events`  | `{ since?: string }`   | `since` — optional ISO-8601 timestamp; only events with `updated_at >= since` are returned (e.g. `2024-01-01T00:00:00.000Z`). Leave blank to return all failed events. | All failed webhook events. Optional ISO-8601 `since` filter on `updated_at` |
+| `retry_provision`     | `{ event_id: string }` | `event_id` — enter the event ID to retry (e.g. `evt_hire_003`)                                              | Re-run provisioning for a failed event using the original payload           |
+
+> **Note:** The programmatic input column shows the JSON schema used internally during tool calls. When using the MCP Inspector UI, enter each field's value directly into the corresponding input box — no JSON wrapping needed.
 
 **`retry_provision` notes:**
+
 - Only works on events with `status = "failed"`
 - Resets status to `"pending"` then re-runs the shared provisioner
 - Returns `{ event_id, status: "completed", granted_apps }` on success
@@ -414,6 +425,7 @@ The Inspector opens a local web UI where you can list and call all three tools i
     ├── webhook.test.ts        # POST /webhooks/hris — 15 tests (happy path, idempotency, validation, errors)
     ├── mcp.test.ts            # MCP tool handlers — 24 tests (extractArg, all 3 tools, state machine)
     └── ollama.test.ts         # Ollama integration — 21 tests (fetch mocked; no Ollama required)
+
 ```
 
 ---
@@ -426,7 +438,7 @@ Six tables: `apps`, `role_app_grants`, `employees`, `access_grants`, `audit_log`
 
 To inspect the live database:
 
-```bash
+```
 sqlite3 data/onboarding.db
 
 sqlite> SELECT * FROM employees;
@@ -469,13 +481,14 @@ POST /webhooks/hris
                       │
                       ├── Ollama running → summary logged to stderr
                       └── Ollama not running → null returned, nothing logged (silent)
+
 ```
 
 The integration is **purely additive** — no function signatures change, no tests require Ollama, and removing `onboarding/llm.ts` would only require removing two `import` references.
 
 ### Setup
 
-```bash
+```
 # 1. Install Ollama (https://ollama.com)
 # 2. Pull the model — llama3 is ~4 GB on first pull
 ollama pull llama3
@@ -492,18 +505,20 @@ ollama list
 
 All Ollama settings are in `.env` (no code changes needed):
 
-| Variable | Default | Notes |
-|---|---|---|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Change to point at a remote Ollama instance. Trailing slash is stripped automatically. |
-| `OLLAMA_MODEL` | `llama3` | Any model you have pulled locally. e.g. `mistral`, `phi3`, `gemma2` |
-| `OLLAMA_TIMEOUT_MS` | `60000` | 60 seconds. llama3 first-load (cold start) can take 30–60 s. Increase if you see timeouts. |
+| Variable            | Default                  | Notes                                                                                      |
+| ------------------- | ------------------------ | ------------------------------------------------------------------------------------------ |
+| `OLLAMA_BASE_URL`   | `http://localhost:11434` | Change to point at a remote Ollama instance. Trailing slash is stripped automatically.     |
+| `OLLAMA_MODEL`      | `llama3`                 | Any model you have pulled locally. e.g. `mistral`, `phi3`, `gemma2`                        |
+| `OLLAMA_TIMEOUT_MS` | `60000`                  | 60 seconds. llama3 first-load (cold start) can take 30–60 s. Increase if you see timeouts. |
+
 
 ### What to expect in logs
 
 With `LOG_LEVEL=debug` in `.env` (already set by default), you'll see the full call trace:
 
 **Ollama running, model loaded:**
-```json
+
+```
 {"level":"info","msg":"provisioned","event_id":"evt_hire_001","granted_apps_count":3}
 {"level":"debug","msg":"Ollama: attempting onboarding summary","model":"llama3","baseUrl":"http://localhost:11434","timeoutMs":60000}
 {"level":"debug","msg":"Ollama: summary generated successfully","model":"llama3","chars":187}
@@ -511,25 +526,28 @@ With `LOG_LEVEL=debug` in `.env` (already set by default), you'll see the full c
 ```
 
 **Ollama not running (ECONNREFUSED):**
-```json
+
+```
 {"level":"info","msg":"provisioned","event_id":"evt_hire_001","granted_apps_count":3}
 {"level":"debug","msg":"Ollama: attempting onboarding summary","model":"llama3"}
 {"level":"debug","msg":"Ollama: call failed silently","error":"...ECONNREFUSED...","hint":"Ollama is not running. Start it with: ollama serve"}
 ```
 
 **Model not pulled (404):**
-```json
+
+```
 {"level":"debug","msg":"Ollama: non-OK response — skipping summary","status":404,"hint":"Model \"llama3\" may not be pulled. Run: ollama pull llama3"}
 ```
 
 **Request timed out:**
-```json
+
+```
 {"level":"debug","msg":"Ollama: request timed out","model":"llama3","timeoutMs":60000}
 ```
 
 ### Switching models
 
-```bash
+```
 # Use Mistral instead of llama3
 ollama pull mistral
 # Then update .env:
@@ -546,21 +564,22 @@ The integration lives in `onboarding/llm.ts` (stretch goal module, additive only
 
 ## Git Checkpoints
 
-| Tag | Meaning |
-|---|---|
-| `v1-webhook` | `POST /webhooks/hris` accepts valid hire, writes grants + audit |
-| `v2-mcp` | MCP server runs over stdio, `tools/list` returns all 3 tools |
-| `v3-final` | Idempotency, error paths, all tests passing, README + VIBE_LOG complete |
+| Tag          | Meaning                                                                  |
+| ------------ | ------------------------------------------------------------------------ |
+| `v1-webhook` | `POST /webhooks/hris` accepts valid hire, writes grants + audit          |
+| `v2-mcp`     | MCP server runs over stdio, `tools/list` returns all 3 tools             |
+| `v3-final`   | Idempotency, error paths, all tests passing, README + VIBE\_LOG complete |
+| `v4-ollama`  | Stretch goal: `onboarding/llm.ts` added — fire-and-forget Ollama summary logged to stderr after successful provisioning; configurable via `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_MS`; silent no-op if Ollama is not running; 21 new tests (all mocked, no live Ollama required) |
 
 ---
 
 ## Known Limitations & Future Work
 
-| Limitation | What I'd do with more time |
-|---|---|
-| No authentication on the webhook endpoint | Add HMAC signature verification (`X-Hub-Signature-256`) |
-| SQLite is single-writer | Swap to PostgreSQL + connection pool for multi-process production use |
-| Role list is seeded at init time | Add `POST /admin/roles` to manage roles at runtime |
-| No retry backoff or queue | BullMQ with exponential backoff for production reliability |
-| No pagination on `list_failed_events` | Add `limit` + `offset` params |
-| Ollama stretch goal is additive | Make it configurable per deployment via env var |
+| Limitation                                | What I'd do with more time                                            |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| No authentication on the webhook endpoint | Add HMAC signature verification (`X-Hub-Signature-256`)               |
+| SQLite is single-writer                   | Swap to PostgreSQL + connection pool for multi-process production use |
+| Role list is seeded at init time          | Add `POST /admin/roles` to manage roles at runtime                    |
+| No retry backoff or queue                 | BullMQ with exponential backoff for production reliability            |
+| No pagination on `list_failed_events`     | Add `limit` + `offset` params                                         |
+| Ollama stretch goal is additive           | Make it configurable per deployment via env var                       |
